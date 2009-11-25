@@ -19,6 +19,11 @@
     (seq? e)   (list-to-js e)
     :else (throw (RuntimeException. (str "Could not translate: " e " of type: " (class e))))))
 
+(defn stats-to-js [stats]
+  (if (empty? stats)
+    ""
+    (str (exp-to-js (first stats)) "\n" (stats-to-js (rest stats)))))
+
 (defn- comma-separate [lst]
   (if (empty? lst)
     ""
@@ -41,11 +46,11 @@
   (str "Array(" (comma-separate (map exp-to-js e)) ")"))
 
 (defn map-to-js [e]
-  (str "{" (comma-separate
+  (str "({" (comma-separate
              (map
                (fn [v] (str (exp-to-js (first v)) ": " (exp-to-js (second v))))
                e))
-    "}"))
+    "})"))
 
 
 (defn- list-op [op js-op args]
@@ -95,9 +100,11 @@
     (str "(function() { " (apply lets-to-vars bindings) (exps-to-js body) " })()")))
 
 (defmethod list-to-js :default [lst]
-  (let [expanded (macroexpand lst)]
-    (if (= lst expanded)
-        (str (first lst) "(" (reduce (fn [e1 e2] (str e1 ", " e2)) (map exp-to-js (rest lst))) ")")
-        (do
-          (println expanded)
-          (list-to-js expanded)))))
+  (cond
+    (keyword? (first lst)) (str (exp-to-js (second lst)) "[" (kw-to-js (first lst)) "]")
+    :else (let [expanded (macroexpand lst)]
+        (if (= lst expanded)
+            (str (first lst) "(" (reduce (fn [e1 e2] (str e1 ", " e2)) (map exp-to-js (rest lst))) ")")
+            (do
+            (println expanded)
+            (list-to-js expanded))))))

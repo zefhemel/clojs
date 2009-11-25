@@ -1,2 +1,4 @@
- <arg value = "clojs" /> 
-<arg value = "rhino-js"/>
+ <arg value = "clojs.compiler" /> 
+<arg value = "clojs.rhino-js" /> 
+<arg value = "clojs.test" /> 
+<arg value = "clojs.util"/>
