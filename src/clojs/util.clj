@@ -5,7 +5,9 @@
 (defmacro defnjs [name params & body]
   (if-not (vector? params)
     (throw (IllegalArgumentException. "second arguments should be a vector of argument names"))
-    `(def ~name {:language :javascript :code ~(exp-to-js (apply list 'defn name params body))})))
+    `(def ~name {:language :javascript
+                 :code (quote ~(apply list 'defn name params body))
+                 :code-string ~(exp-to-js (apply list 'defn name params body))})))
 
 (defn- all-js-maps [ns]
   (map (comp deref second)
@@ -14,13 +16,7 @@
                 (and (map? val) (= (:language val) :javascript)))) (ns-publics ns))))
 
 (defn all-js [ns]
-  (apply str (map :code (all-js-maps ns))))
+  (apply str (map :code-string (all-js-maps ns))))
 
-(defnjs test-fun [a b]
-  (+ a b))
-
-(defnjs say-hello [name]
-  (+ "Hello, " name))
-
-(defn -main [& args]
-    (println (all-js 'clojs.util)))
+(defn all-js-code [ns]
+  (map :code (all-js-maps ns)))

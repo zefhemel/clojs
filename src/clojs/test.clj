@@ -15,10 +15,12 @@
         (println "\t[OK]")
         (println "\t[FAIL] Got: " js-result " expected: " clojure-result " for JS: " (stats-to-js form)))))
 
-;(defnjs test-fun [a b]
-;  (+ a b))
+(defnjs test-fun [a b]
+  (+ a b))
 
-(comment
+(defnjs say-hello [name]
+  (+ "Hello, " name))
+
 (defn -main [& args]
   (with-js-scope
     (test-form '3)
@@ -29,6 +31,7 @@
                     (- 100 100)))
     (test-form '(:name {:name "Zef" :age 26}))
   )
-  (println (filter (fn [[k v]] (= k 'test-fun)) (ns-publics *ns*)))
-  )
-)
+  (println "--- Collected Javascript functions -----")
+  (println (all-js 'clojs.test))
+  (println (all-js-code 'clojs.test)))
+
