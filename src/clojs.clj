@@ -1,16 +1,11 @@
 (ns clojs
-    (:gen-class))
+    (:gen-class)
+    (:use rhino-js))
 
 (defn- paren [e]
   (str "(" e ")"))
 
-(def sym-to-js)
-(def vec-to-js)
-(def list-to-js)
-(def kw-to-js)
-(def num-to-js)
-(def str-to-js)
-(def map-to-js)
+(declare sym-to-js vec-to-js list-to-js kw-to-js num-to-js str-to-js map-to-js)
 
 (defn exp-to-js [e]
   ;(println "Exp: " e)
@@ -23,6 +18,11 @@
     (map?    e) (map-to-js e)
     (seq? e)   (list-to-js e)
     :else (throw (RuntimeException. (str "Could not translate: " e " of type: " (class e))))))
+
+(defn- comma-separate [lst]
+  (if (empty? lst)
+    ""
+    (reduce (fn [e1 e2] (str e1 ", " e2)) lst)))
 
 (defn str-to-js [e]
   "Naive implementation, does not concider escapes yet"
@@ -38,10 +38,10 @@
   (str "'" (.substring (str e) 1) "'"))
 
 (defn vec-to-js [e]
-  (str "Array(" (reduce #(str %1 ", " %2) (map exp-to-js e)) ")"))
+  (str "Array(" (comma-separate (map exp-to-js e)) ")"))
 
 (defn map-to-js [e]
-  (str "{" (reduce #(str %1 ", " %2) 
+  (str "{" (comma-separate
              (map
                (fn [v] (str (exp-to-js (first v)) ": " (exp-to-js (second v))))
                e))
@@ -66,11 +66,6 @@
 (defmethod list-to-js '/ [lst]
   (list-op '/ "/" (rest lst)))
 
-(defn- comma-separate [lst]
-  (if (empty? lst)
-    ""
-    (reduce (fn [e1 e2] (str e1 ", " e2)) lst)))
-
 ;; Special forms
 (defmethod list-to-js 'def [lst]
   (str "var " (second lst) " = " (exp-to-js (nth lst 2)) ";\n"))
@@ -91,6 +86,14 @@
   (let [body (second lst)]
     (str "(function(" (comma-separate (first body)) ") {" (exps-to-js (rest body)) "})")))
 
+(defn- lets-to-vars
+  ([] "")
+  ([b v & rest] (str "var " (sym-to-js b) " = " (exp-to-js v) "; " (apply lets-to-vars rest))))
+
+(defmethod list-to-js 'let [lst]
+  (let [[bindings & body] (rest lst)]
+    (str "(function() { " (apply lets-to-vars bindings) (exps-to-js body) " })()")))
+
 (defmethod list-to-js :default [lst]
   (let [expanded (macroexpand lst)]
     (if (= lst expanded)
@@ -100,4 +103,7 @@
           (list-to-js expanded)))))
 
 (defn -main [& args]
-  (println (exp-to-js '(defn dosomething [] (print "Hello!")))))
+  (with-js-scope
+    (println (js-eval "3 * 8")))
+  (println (exp-to-js '(defn dosomething [] (print "Hello!"))))
+  (println (exp-to-js '(let [x 10 y 2] (+ x y)))))

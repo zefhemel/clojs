@@ -1,1 +1,2 @@
- <arg value = "clojs"/>
+ <arg value = "clojs" /> 
+<arg value = "rhino-js"/>
