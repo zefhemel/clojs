@@ -2,12 +2,17 @@
   (:gen-class)
   (:use clojs.compiler))
 
-(defmacro defnjs [name params & body]
+(defmacro js-defn  [name params & body]
   (if-not (vector? params)
     (throw (IllegalArgumentException. "second arguments should be a vector of argument names"))
     `(def ~name {:language :javascript
                  :code (quote ~(apply list 'defn name params body))
                  :code-string ~(exp-to-js (apply list 'defn name params body))})))
+
+(defmacro js-def  [name value]
+  `(def ~name {:language :javascript
+               :code (quote ~(list 'def name value))
+               :code-string ~(exp-to-js (list 'def name value))}))
 
 (defn- all-js-maps [ns]
   (map (comp deref second)

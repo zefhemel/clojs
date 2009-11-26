@@ -15,10 +15,12 @@
         (println "\t[OK]")
         (println "\t[FAIL] Got: " js-result " expected: " clojure-result " for JS: " (stats-to-js form)))))
 
-(defnjs test-fun [a b]
+(js-def my-name "Zef")
+
+(js-defn test-fun [a b]
   (+ a b))
 
-(defnjs say-hello [name]
+(js-defn say-hello [name]
   (+ "Hello, " name))
 
 (defn -main [& args]
