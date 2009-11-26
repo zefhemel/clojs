@@ -2,26 +2,24 @@
   (:gen-class)
   (:use clojs.compiler))
 
+(def *all-js-defs* (ref {}))
+
 (defmacro js-defn  [name params & body]
   (if-not (vector? params)
     (throw (IllegalArgumentException. "second arguments should be a vector of argument names"))
-    `(def ~name {:language :javascript
-                 :code (quote ~(apply list 'defn name params body))
-                 :code-string ~(exp-to-js (apply list 'defn name params body))})))
+    `(dosync
+       (commute *all-js-defs* assoc (quote ~name)
+                               {:language :javascript
+                                :code (quote ~(apply list 'defn name params body))}))))
 
 (defmacro js-def  [name value]
-  `(def ~name {:language :javascript
-               :code (quote ~(list 'def name value))
-               :code-string ~(exp-to-js (list 'def name value))}))
+  `(dosync
+       (commute *all-js-defs* assoc (quote ~name)
+                               {:language :javascript
+                                :code (quote ~(list 'def name value))})))
 
-(defn- all-js-maps [ns]
-  (map (comp deref second)
-    (filter (fn [[k v]]
-              (let [val (deref v)]
-                (and (map? val) (= (:language val) :javascript)))) (ns-publics ns))))
+(defn all-js []
+  (apply str (map (comp exp-to-js :code) (vals @*all-js-defs*))))
 
-(defn all-js [ns]
-  (apply str (map :code-string (all-js-maps ns))))
-
-(defn all-js-code [ns]
-  (map :code (all-js-maps ns)))
+(defn all-js-code []
+  (map :code (vals @*all-js-defs*)))
