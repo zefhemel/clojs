@@ -14,14 +14,17 @@
 (defmethod list-to-js '/ [[_ & lst]]
   [:op '/ (map exp-to-js lst)])
 
+(defmethod list-to-js '= [[_ e1 e2]]
+  [:methodcall (exp-to-js e1) "equals" [(exp-to-js e2)]])
+
 ;; Special forms
 (defmethod list-to-js 'def [lst]
-  [:vardeclinit (second lst) (exp-to-js (nth lst 2))])
+  [:vardeclinit (clean-id (second lst)) (exp-to-js (nth lst 2))])
 
 (defn- exps-to-js [exps]
   (if (= (count exps) 1) ; last exp, return it!
-    [[:return (exp-to-js (first exps))]]
-    (conj (exps-to-js (rest exps)) (exp-to-js (first exps)))))
+    (list [:return (exp-to-js (first exps))])
+    (cons (exp-to-js (first exps)) (exps-to-js (rest exps)))))
 
 (defmethod list-to-js 'do [lst]
   [:expblock (map exp-to-js (rest lst))])
@@ -34,7 +37,7 @@
 
 (defn- lets-to-vars
   ([] [])
-  ([b v & rest] (conj (apply lets-to-vars rest) [:vardeclinit b (exp-to-js v)])))
+  ([b v & rest] (conj (apply lets-to-vars rest) [:vardeclinit (clean-id b) (exp-to-js v)])))
 
 (defmethod list-to-js 'let [lst]
   (let [[bindings & body] (rest lst)]
@@ -45,6 +48,9 @@
 
 (defmethod list-to-js 'str [lst]
   [:op '+ (concat [[:string ""]] (map exp-to-js (rest lst)))])
+
+(defmethod list-to-js 'set! [[_ var value]]
+  [:assign var (exp-to-js value)])
 
 ;; List operations
 
@@ -58,10 +64,10 @@
     (build-list items)))
 
 (defmethod list-to-js 'first [lst]
-  [:fieldaccess (exp-to-js (second lst)) "head"])
+  [:methodcall [:methodcall (exp-to-js (second lst)) "seq" []] "first" []])
 
 (defmethod list-to-js 'second [lst]
-  [:fieldaccess [:fieldaccess (exp-to-js (second lst)) "tail"] "head"])
+  [:methodcall [:methodcall [:methodcall (exp-to-js (second lst)) "seq" []] "rest" []] "first" []])
 
 (defmethod list-to-js 'rest [lst]
-  [:fieldaccess (exp-to-js (second lst)) "tail"])
+  [:methodcall [:methodcall (exp-to-js (second lst)) "seq" []] "rest" []])

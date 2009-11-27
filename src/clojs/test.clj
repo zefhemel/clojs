@@ -35,6 +35,8 @@
   (with-js-scope
     (test-form '3)
     (test-form '(+ 1 2 3))
+    (test-form '(= 8 8))
+    (test-form '(= [1 2 3] [1 2 3]))
     (test-form '(let [x 2
                       y 6] (* x y)))
     (test-form '(do (* 200 200)
@@ -45,8 +47,10 @@
   (println (all-js))
   (println "---- Some tests ----")
   (with-js-scope
-    (js-run '(def my_name "Zef Hemel"))
+    (js-run '(def my-name "Zef Hemel"))
     (js-run '(println (second (list 1 2 3))))
     )
+  (println "---- File compilation ----")
+  (compile-file "test/js_test.clj" "test/js_test.js")
   )
 

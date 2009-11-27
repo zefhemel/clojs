@@ -1,7 +1,10 @@
 (ns clojs.compiler
-    (:gen-class))
-    
+ (:gen-class))
+
 (declare sym-to-js vec-to-js list-to-js kw-to-js num-to-js str-to-js map-to-js)
+
+(defn clean-id [id]
+  (.replaceAll (str id) "[^a-zA-Z\\$]" "_"))
 
 (defn exp-to-js [e]
   (cond
@@ -23,17 +26,16 @@
   [:string e])
 
 (defn sym-to-js [e]
-  [:id (str e)])
+  [:id (clean-id e)])
 
 (defn num-to-js [e]
   [:num e])
 
 (defn kw-to-js [e]
-  [:string (.substring (str e) 1)])
+  [:string (.substring (clean-id e) 1)])
 
 (defn vec-to-js [e]
-  [:call [:id "Array"] (map exp-to-js e)])
-
+  [:vector (map exp-to-js e)])
 
 (defn map-to-js [e]
   [:map (map (fn [[k v]] [(exp-to-js k) (exp-to-js v)]) e)])
@@ -47,8 +49,16 @@
 
 (defmethod list-to-js :default [lst]
   (cond
-    (keyword? (first lst)) [:indexer (exp-to-js (second lst)) (kw-to-js (first lst))]
+    (keyword? (first lst)) [:methodcall (exp-to-js (second lst)) "get" [(kw-to-js (first lst))]]
     :else (let [expanded (macroexpand lst)]
-        (if (= lst expanded)
-            [:call [:id (first lst)] (map exp-to-js (rest lst))]
-            (list-to-js expanded)))))
+            (if (= lst expanded)
+              [:call [:id (clean-id (first lst))] (map exp-to-js (rest lst))]
+              (list-to-js expanded)))))
+
+(defn try-read [reader]
+  (try
+    (read reader)
+    (catch Exception e
+      (if (= (.indexOf (.getMessage e) "EOF") -1)
+        (throw (RuntimeException. e))
+        nil))))

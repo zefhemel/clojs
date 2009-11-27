@@ -24,3 +24,15 @@
 
 (defn all-js-code []
   (map :code (vals @*all-js-defs*)))
+
+(defn compile-file [in-filename out-filename]
+  (let [reader (java.io.PushbackReader. (java.io.FileReader. in-filename))
+        writer (java.io.PrintWriter. (java.io.FileOutputStream. out-filename))]
+    (loop [parsed (try-read reader)]
+      (println "Just parsed: " parsed)
+      (if-not (nil? parsed)
+        (do
+          (.println writer (js (exp-to-js parsed)))
+          (recur (try-read reader)))))
+    (.close reader)
+    (.close writer)))

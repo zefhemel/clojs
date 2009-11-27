@@ -38,11 +38,17 @@
 (defmethod js-indent :return [[_ value] indent]
   (str indent "return " (js value)))
 
-(defmethod js-indent :indexer [[_ exp index-exp] indent]
-  (str indent (js exp) "[" (js index-exp) "]"))
+(defmethod js-indent :assign [[_ var value] indent]
+  (str indent var " = " (js value)))
 
 (defmethod js-indent :fieldaccess [[_ exp field] indent]
   (str indent (js exp) "." field))
+
+(defmethod js-indent :methodcall [[_ exp name args] indent]
+  (let [ex (if (and (vector? exp) (= (first exp) :num))
+             (str "(" (js exp) ")")
+             (js exp))]
+    (str indent ex "." name "(" (comma-separate (map js args)) ")")))
 
 (defmethod js-indent :new [[_ cls args] indent]
   (str indent "new " cls "(" (comma-separate (map js args)) ")"))
@@ -53,6 +59,9 @@
                (fn [v] (str "\n" (js-indent (first v) (str "  " indent)) ": " (js (second v))))
                values))
     "\n" indent "})"))
+
+(defmethod js-indent :vector [[_ values] indent]
+  (str indent "new Vector([" (comma-separate (map js values)) "])"))
 
 (defmethod js-indent :function [[_ args body] indent]
   (str indent "(function(" (comma-separate (map js args)) ") {\n"
