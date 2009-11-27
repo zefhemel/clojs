@@ -1,9 +1,6 @@
 (ns clojs.compiler
     (:gen-class))
     
-(defn- paren [e]
-  (str "(" e ")"))
-
 (declare sym-to-js vec-to-js list-to-js kw-to-js num-to-js str-to-js map-to-js)
 
 (defn exp-to-js [e]
@@ -19,39 +16,27 @@
 
 (defn stats-to-js [stats]
   (if (empty? stats)
-    ""
-    (str (exp-to-js (first stats)) "\n" (stats-to-js (rest stats)))))
-
-(defn comma-separate [lst]
-  (if (empty? lst)
-    ""
-    (reduce (fn [e1 e2] (str e1 ", " e2)) lst)))
+    []
+    (conj (stats-to-js (rest stats)) (exp-to-js (first stats)))))
 
 (defn str-to-js [e]
-  "Naive implementation, does not concider escapes yet"
-  (str "\"" e "\""))
+  [:string e])
 
 (defn sym-to-js [e]
-  (str e))
+  [:id (str e)])
 
 (defn num-to-js [e]
-  (str e))
+  [:num e])
 
 (defn kw-to-js [e]
-  (str "'" (.substring (str e) 1) "'"))
+  [:string (.substring (str e) 1)])
 
 (defn vec-to-js [e]
-  (str "Array(" (comma-separate (map exp-to-js e)) ")"))
+  [:call [:id "Array"] (map exp-to-js e)])
+
 
 (defn map-to-js [e]
-  (str "({" (comma-separate
-             (map
-               (fn [v] (str (exp-to-js (first v)) ": " (exp-to-js (second v))))
-               e))
-    "})"))
-
-(defn list-op [op js-op args]
-  (paren (reduce (fn [e1 e2] (str e1 " " js-op " " e2)) (map exp-to-js args))))
+  [:map (map (fn [[k v]] [(exp-to-js k) (exp-to-js v)]) e)])
 
 (defmulti list-to-js
   (fn [lst]
@@ -62,8 +47,8 @@
 
 (defmethod list-to-js :default [lst]
   (cond
-    (keyword? (first lst)) (str (exp-to-js (second lst)) "[" (kw-to-js (first lst)) "]")
+    (keyword? (first lst)) [:indexer (exp-to-js (second lst)) (kw-to-js (first lst))]
     :else (let [expanded (macroexpand lst)]
         (if (= lst expanded)
-            (str (first lst) "(" (reduce (fn [e1 e2] (str e1 ", " e2)) (map exp-to-js (rest lst))) ")")
+            [:call [:id (first lst)] (map exp-to-js (rest lst))]
             (list-to-js expanded)))))

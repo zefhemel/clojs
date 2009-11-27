@@ -1,6 +1,7 @@
 (ns clojs.util
   (:gen-class)
-  (:use clojs.compiler))
+  (:use clojs.compiler
+        clojs.pp))
 
 (def *all-js-defs* (ref {}))
 
@@ -19,7 +20,7 @@
                                 :code (quote ~(list 'def name value))})))
 
 (defn all-js []
-  (apply str (map (comp exp-to-js :code) (vals @*all-js-defs*))))
+  (apply str (map (comp (fn [v] (js-indent-semi v "")) exp-to-js :code) (vals @*all-js-defs*))))
 
 (defn all-js-code []
   (map :code (vals @*all-js-defs*)))

@@ -2,68 +2,66 @@
   (:use clojs.compiler))
 
 ;; Numeric operators
-(defmethod list-to-js '+ [lst]
-  (list-op '+ "+" (rest lst)))
+(defmethod list-to-js '+ [[_ & lst]]
+  [:op '+ (map exp-to-js lst)])
 
-(defmethod list-to-js '- [lst]
-  (list-op '- "-" (rest lst)))
+(defmethod list-to-js '- [[_ & lst]]
+  [:op '- (map exp-to-js lst)])
 
-(defmethod list-to-js '* [lst]
-  (list-op '* "*" (rest lst)))
+(defmethod list-to-js '* [[_ & lst]]
+  [:op '* (map exp-to-js lst)])
 
-(defmethod list-to-js '/ [lst]
-  (list-op '/ "/" (rest lst)))
+(defmethod list-to-js '/ [[_ & lst]]
+  [:op '/ (map exp-to-js lst)])
 
 ;; Special forms
 (defmethod list-to-js 'def [lst]
-  (str "var " (second lst) " = " (exp-to-js (nth lst 2)) ";\n"))
+  [:vardeclinit (second lst) (exp-to-js (nth lst 2))])
 
 (defn- exps-to-js [exps]
   (if (= (count exps) 1) ; last exp, return it!
-    (str "return " (exp-to-js (first exps)) ";")
-    (apply str (exp-to-js (first exps)) "; " (exps-to-js (rest exps)))))
+    [[:return (exp-to-js (first exps))]]
+    (conj (exps-to-js (rest exps)) (exp-to-js (first exps)))))
 
 (defmethod list-to-js 'do [lst]
-  (str "(function() { " (exps-to-js (rest lst)) "})()"))
+  [:expblock (map exp-to-js (rest lst))])
 
 (defmethod list-to-js 'fn [lst]
-  (println lst)
   (let [body (second lst)]
       (if (vector? (first body)) ; multiple arity macro-expanded fn
-        (str "(function(" (comma-separate (first body)) ") {" (exps-to-js (rest body)) "})")
-        (str "(function(" (comma-separate body) ") {" (exps-to-js (rest (rest lst))) "})"))))
+        [:function (map exp-to-js (first body)) (exps-to-js (rest body))]
+        [:function body (exps-to-js (rest (rest lst)))])))
 
 (defn- lets-to-vars
-  ([] "")
-  ([b v & rest] (str "var " (sym-to-js b) " = " (exp-to-js v) "; " (apply lets-to-vars rest))))
+  ([] [])
+  ([b v & rest] (conj (apply lets-to-vars rest) [:vardeclinit b (exp-to-js v)])))
 
 (defmethod list-to-js 'let [lst]
   (let [[bindings & body] (rest lst)]
-    (str "(function() { " (apply lets-to-vars bindings) (exps-to-js body) " })()")))
+    [:expblock (concat (apply lets-to-vars bindings) (map exp-to-js body))]))
 
 (defmethod list-to-js 'println [lst]
-  (str "java.lang.System.out.println('' + " (exp-to-js (second lst)) ")"))
+  [:call [:id "java.lang.System.out.println"] [[:op '+ [[:string ""] (exp-to-js (second lst))]]]])
 
 (defmethod list-to-js 'str [lst]
-  (str "'' + " (list-op '+ "+" (rest lst))))
-
+  [:op '+ (concat [[:string ""]] (map exp-to-js (rest lst)))])
 
 ;; List operations
 
 (defn- build-list [lst]
   (if (= (count lst) 0)
-    "null"
-    (str "new Cons(" (exp-to-js (first lst)) ", " (build-list (rest lst)) ")")))
+    [:null]
+    [:new "Cons" [(exp-to-js (first lst)) (build-list (rest lst))]]))
 
 (defmethod list-to-js 'list [lst]
   (let [items (rest lst)]
-    (str "(" (build-list items) ")")))
+    (build-list items)))
 
 (defmethod list-to-js 'first [lst]
-  (str "(" (exp-to-js (second lst)) ".head)"))
+  [:fieldaccess (exp-to-js (second lst)) "head"])
 
 (defmethod list-to-js 'second [lst]
-  (str "(" (exp-to-js (second lst)) ".tail.head)"))
+  [:fieldaccess [:fieldaccess (exp-to-js (second lst)) "tail"] "head"])
 
 (defmethod list-to-js 'rest [lst]
-  (str "(" (exp-to-js (second lst)) ".tail)"))
+  [:fieldaccess (exp-to-js (second lst)) "tail"])
