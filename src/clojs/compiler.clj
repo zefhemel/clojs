@@ -47,6 +47,10 @@
         (symbol (aget parts 1))
         (first lst)))))
 
+(defmacro defbuiltin [fun args & body]
+  `(defmethod list-to-js (quote ~fun) [[~(gensym) ~@args]]
+     ~@body))
+
 (defmethod list-to-js :default [lst]
   (cond
     (keyword? (first lst)) [:methodcall (exp-to-js (second lst)) "get" [(kw-to-js (first lst))]]

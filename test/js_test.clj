@@ -1,15 +1,11 @@
 ; NOTE: Although this file looks like clojure, it is in fact CloJS
 
-(def hits 0)
+(def records [])
 
-(defn say-hello [name]
-  (set! hits (+ hits 1))
-  (str "Hello, " name))
+(defn add-record [name age]
+  (set! records (cons {:name name :age age} records)))
 
-(defn say-hi [name]
-  (set! hits (+ hits 1))
-  (str "Hi, " (say-hello name)))
+(add-record "Zef" 26)
+(add-record "Danny" 25)
 
-(println (say-hello "Zef"))
-(println (say-hi "Zef"))
-(println hits)
+(println (map (fn [v] (:name v)) records))

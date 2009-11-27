@@ -1,73 +1,89 @@
 (ns clojs.builtin.core
-  (:use clojs.compiler))
+ (:use clojs.compiler))
 
 ;; Numeric operators
-(defmethod list-to-js '+ [[_ & lst]]
+(defbuiltin + [& lst]
   [:op '+ (map exp-to-js lst)])
 
-(defmethod list-to-js '- [[_ & lst]]
+(defbuiltin - [& lst]
   [:op '- (map exp-to-js lst)])
 
-(defmethod list-to-js '* [[_ & lst]]
+(defbuiltin * [& lst]
   [:op '* (map exp-to-js lst)])
 
-(defmethod list-to-js '/ [[_ & lst]]
+(defbuiltin / [& lst]
   [:op '/ (map exp-to-js lst)])
 
-(defmethod list-to-js '= [[_ e1 e2]]
+(defbuiltin = [e1 e2]
   [:methodcall (exp-to-js e1) "equals" [(exp-to-js e2)]])
 
 ;; Special forms
-(defmethod list-to-js 'def [lst]
-  [:vardeclinit (clean-id (second lst)) (exp-to-js (nth lst 2))])
+(defbuiltin def [var value]
+  [:vardeclinit (clean-id var) (exp-to-js value)])
 
 (defn- exps-to-js [exps]
   (if (= (count exps) 1) ; last exp, return it!
-    (list [:return (exp-to-js (first exps))])
+    (do (println exps) (if (and (seq? (first exps))
+                             (= (first (first exps)) 'set!)) ; no return before assignment
+      (list (exp-to-js (first exps)))
+      (list [:return (exp-to-js (first exps))])))
     (cons (exp-to-js (first exps)) (exps-to-js (rest exps)))))
 
-(defmethod list-to-js 'do [lst]
-  [:expblock (map exp-to-js (rest lst))])
+(defbuiltin do [& lst]
+  [:expblock (map exp-to-js lst)])
 
-(defmethod list-to-js 'fn [lst]
-  (let [body (second lst)]
-      (if (vector? (first body)) ; multiple arity macro-expanded fn
-        [:function (map exp-to-js (first body)) (exps-to-js (rest body))]
-        [:function body (exps-to-js (rest (rest lst)))])))
+(defbuiltin fn [& lst]
+  (let [body (first lst)]
+    (if (vector? (first body)) ; multiple arity macro-expanded fn
+      [:function (map exp-to-js (first body)) (exps-to-js (rest body))]
+      [:function (map exp-to-js body) (exps-to-js (rest lst))])))
 
 (defn- lets-to-vars
   ([] [])
   ([b v & rest] (conj (apply lets-to-vars rest) [:vardeclinit (clean-id b) (exp-to-js v)])))
 
-(defmethod list-to-js 'let [lst]
-  (let [[bindings & body] (rest lst)]
-    [:expblock (concat (apply lets-to-vars bindings) (map exp-to-js body))]))
+(defbuiltin let [bindings & body]
+  [:expblock (concat (apply lets-to-vars bindings) (map exp-to-js body))])
 
-(defmethod list-to-js 'println [lst]
-  [:call [:id "java.lang.System.out.println"] [[:op '+ [[:string ""] (exp-to-js (second lst))]]]])
+(defbuiltin println [& lst]
+  [:call [:id "java.lang.System.out.println"] [(exp-to-js (cons 'str lst))]])
 
-(defmethod list-to-js 'str [lst]
-  [:op '+ (concat [[:string ""]] (map exp-to-js (rest lst)))])
+(defbuiltin str [& lst]
+  [:op '+ (concat [[:string ""]] (map exp-to-js lst))])
 
-(defmethod list-to-js 'set! [[_ var value]]
+(defbuiltin set! [var value]
   [:assign var (exp-to-js value)])
 
-;; List operations
+;; Seq operations
+
+(defn- wrap-seq [e]
+  [:methodcall e "seq" []])
+
+(defbuiltin seq [e]
+  (wrap-seq (exp-to-js e)))
 
 (defn- build-list [lst]
   (if (= (count lst) 0)
     [:null]
     [:new "Cons" [(exp-to-js (first lst)) (build-list (rest lst))]]))
 
-(defmethod list-to-js 'list [lst]
-  (let [items (rest lst)]
-    (build-list items)))
+(defbuiltin list [& lst]
+  (build-list lst))
 
-(defmethod list-to-js 'first [lst]
-  [:methodcall [:methodcall (exp-to-js (second lst)) "seq" []] "first" []])
+(defbuiltin cons [hd tl]
+  [:methodcall (wrap-seq (exp-to-js tl)) "cons" [(exp-to-js hd)]])
 
-(defmethod list-to-js 'second [lst]
-  [:methodcall [:methodcall [:methodcall (exp-to-js (second lst)) "seq" []] "rest" []] "first" []])
+(defbuiltin first [lst]
+  [:methodcall [:methodcall (exp-to-js lst) "seq" []] "first" []])
 
-(defmethod list-to-js 'rest [lst]
-  [:methodcall [:methodcall (exp-to-js (second lst)) "seq" []] "rest" []])
+(defbuiltin second [lst]
+  [:methodcall [:methodcall (wrap-seq (exp-to-js lst)) "rest" []] "first" []])
+
+(defbuiltin rest [lst]
+  [:methodcall [:methodcall (exp-to-js lst) "seq" []] "rest" []])
+
+(defbuiltin map [fn lst]
+  [:call [:id "map"] [(exp-to-js fn) (wrap-seq (exp-to-js lst))]])
+
+;; Vector operations
+;(defmethod list-to-js 'get [[_

@@ -54,7 +54,7 @@
   (str indent "new " cls "(" (comma-separate (map js args)) ")"))
 
 (defmethod js-indent :map [[_ values] indent]
-  (str indent "({" (comma-separate
+  (str indent "new Map({" (comma-separate
              (map
                (fn [v] (str "\n" (js-indent (first v) (str "  " indent)) ": " (js (second v))))
                values))

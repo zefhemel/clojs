@@ -196,6 +196,14 @@ String.prototype.equals = function(other) {
 Number.prototype.equals = function(other) {
     return this == other;
 }
+
+function map(fn, seq) {
+    if(!seq.isEmpty()) {
+        return new Cons(fn(seq.first()), map(fn, seq.rest()));
+    } else {
+        return seq;
+    }
+}
 /*
 var v = new Vector([1, 2, 3]).seq();
 var v2 = new Vector([1, 2, 3]).seq();

@@ -20,7 +20,9 @@
                                 :code (quote ~(list 'def name value))})))
 
 (defn all-js []
-  (apply str (map (comp (fn [v] (js-indent-semi v "")) exp-to-js :code) (vals @*all-js-defs*))))
+  (apply str (map 
+               (comp (fn [v] (js-indent-semi v "")) exp-to-js :code)
+               (vals @*all-js-defs*))))
 
 (defn all-js-code []
   (map :code (vals @*all-js-defs*)))
@@ -28,6 +30,7 @@
 (defn compile-file [in-filename out-filename]
   (let [reader (java.io.PushbackReader. (java.io.FileReader. in-filename))
         writer (java.io.PrintWriter. (java.io.FileOutputStream. out-filename))]
+    (.println writer "load('js/clojs.js')")
     (loop [parsed (try-read reader)]
       (println "Just parsed: " parsed)
       (if-not (nil? parsed)
