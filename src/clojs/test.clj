@@ -1,7 +1,7 @@
 (ns clojs.test
  (:gen-class)
  (:use clojs.compiler
-       clojs.builtin.core
+       ;clojs.builtin.core
        clojs.rhino-js
        clojs.pp
        clojs.util))
@@ -10,18 +10,18 @@
   (print "Test: " form)
   (let [clojure-result (eval form)
         js-result      (try
-                         ;(println "This:" (exp-to-js form))
-                         ;(println "in JS:" (js (exp-to-js form)))
-                         (js-eval (js (exp-to-js form)))
+                         ;(println "This:" (exp->js form))
+                         ;(println "in JS:" (js (exp->js form)))
+                         (js-eval (js (exp->js form)))
                          (catch Exception e
-                           (str "JS Result: " (js (exp-to-js form)))))]
+                           (str "JS Result: " (js (exp->js form)))))]
     (if (= clojure-result js-result)
       (println "\t[OK]")
-      (println "\t[FAIL] Got: " js-result " expected: " clojure-result " for JS: " (exp-to-js form)))))
+      (println "\t[FAIL] Got: " js-result " expected: " clojure-result " for JS: " (exp->js form)))))
   
 
 (defn js-run [form]
-  (js-eval (js (exp-to-js form))))
+  (js-eval (js (exp->js form))))
 
 (js-def my-name "Zef")
 

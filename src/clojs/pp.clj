@@ -6,71 +6,79 @@
     ""
     (reduce (fn [e1 e2] (str e1 ", " e2)) lst)))
 
-(defmulti js-indent (fn [vec indent] (first vec)))
+(defmulti pp-js
+  (fn [vec indent] (first vec)))
 
 (defn js [vec]
-  (js-indent vec ""))
+  (pp-js vec ""))
 
-(defn js-indent-semi [vec indent]
-  (str (js-indent vec indent) ";\n"))
+(defmacro defpp [type args body]
+  `(defmethod pp-js ~type [[~(gensym) ~@args] ~(quote indent)]
+     ~body))
 
-(defmethod js-indent :string [[_ s] indent]
+(defn pp-js-semi [vec indent]
+  (str (pp-js vec indent) ";\n"))
+
+(defpp :string [s]
   (str indent "\"" s "\""))
 
-(defmethod js-indent :num [[_ n] indent]
+(defpp :num [n]
   (str indent n))
 
-(defmethod js-indent :id [[_ id] indent]
+(defpp :id [id]
   (str indent id))
 
-(defmethod js-indent :null [_ indent]
+(defpp :keyword [id]
+  (str indent "\"" id "\""))
+
+(defpp :null []
   (str indent "null"))
 
-(defmethod js-indent :op [[_ op operands] indent]
-  (str indent "(" (reduce (fn [e1 e2] (str e1 " " op " " e2)) (map js-indent operands (cycle [""]))) ")"))
+(defpp :op [op op1 op2]
+  (str indent "(" (pp-js op1 indent) " " (str op) " " (pp-js op2 indent) ")"))
 
-(defmethod js-indent :call [[_ fun-id args] indent]
+(defpp :call [fun-id args]
   (str indent (js fun-id) "(" (comma-separate (map js args)) ")"))
 
-(defmethod js-indent :vardeclinit [[_ id value] indent]
+(defpp :vardeclinit [id value]
   (str indent "var " id " = " (js value)))
 
-(defmethod js-indent :return [[_ value] indent]
+(defpp :return [value]
   (str indent "return " (js value)))
 
-(defmethod js-indent :assign [[_ var value] indent]
+(defpp :assign [var value]
   (str indent var " = " (js value)))
 
-(defmethod js-indent :fieldaccess [[_ exp field] indent]
+(defpp :fieldaccess [exp field]
   (str indent (js exp) "." field))
 
-(defmethod js-indent :methodcall [[_ exp name args] indent]
+(defpp :methodcall [exp name args]
   (let [ex (if (and (vector? exp) (= (first exp) :num))
              (str "(" (js exp) ")")
              (js exp))]
     (str indent ex "." name "(" (comma-separate (map js args)) ")")))
 
-(defmethod js-indent :new [[_ cls args] indent]
+(defpp :new [cls args]
   (str indent "new " cls "(" (comma-separate (map js args)) ")"))
 
-(defmethod js-indent :map [[_ values] indent]
-  (str indent "new Map({" (comma-separate
-             (map
-               (fn [v] (str "\n" (js-indent (first v) (str "  " indent)) ": " (js (second v))))
-               values))
-    "\n" indent "})"))
+(defpp :map [values]
+  (str indent "{" (comma-separate
+                   (map
+                    (fn [v] (str "\n" (pp-js (first v) (str "  " indent)) ": " (js (second v))))
+                    values))
+       "\n" indent "}"))
 
-(defmethod js-indent :vector [[_ values] indent]
-  (str indent "new Vector([" (comma-separate (map js values)) "])"))
+(defpp :vector [values]
+  (str indent "[" (comma-separate (map js values)) "]"))
 
-(defmethod js-indent :function [[_ args body] indent]
+(defpp :function [args body]
   (str indent "(function(" (comma-separate (map js args)) ") {\n"
-    (apply str (map js-indent-semi body (cycle [(str "  " indent)]))) "})"))
+    (apply str (map pp-js-semi body (cycle [(str "  " indent)]))) "})"))
 
 (defn- expblock-insert-return [exps]
   (if (= (count exps) 1) ; last exp, return it!
     [[:return (first exps)]]
     (cons (first exps) (expblock-insert-return (rest exps)) )))
 
-(defmethod js-indent :expblock [[_ exps] indent]
-  (js-indent [:call [:function [] (expblock-insert-return exps)] []] indent))
+(defpp :expblock [exps]
+  (pp-js [:call [:function [] (expblock-insert-return exps)] []] indent))

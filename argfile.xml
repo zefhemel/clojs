@@ -1,6 +1,0 @@
- <arg value = "clojs.builtin.core" /> 
-<arg value = "clojs.compiler" /> 
-<arg value = "clojs.pp" /> 
-<arg value = "clojs.rhino-js" /> 
-<arg value = "clojs.test" /> 
-<arg value = "clojs.util"/>

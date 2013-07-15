@@ -21,7 +21,7 @@
 
 (defn all-js []
   (apply str (map 
-               (comp (fn [v] (js-indent-semi v "")) exp-to-js :code)
+               (comp (fn [v] (js-indent-semi v "")) exp->js :code)
                (vals @*all-js-defs*))))
 
 (defn all-js-code []
@@ -35,7 +35,7 @@
       (println "Just parsed: " parsed)
       (if-not (nil? parsed)
         (do
-          (.println writer (js (exp-to-js parsed)))
+          (.println writer (js (exp->js parsed)))
           (recur (try-read reader)))))
     (.close reader)
     (.close writer)))
