@@ -1,7 +1,14 @@
 (ns clojs.compiler
- (:gen-class))
+  (:gen-class))
 
-(declare sym-to-js vec-to-js list-to-js kw-to-js num-to-js str-to-js map-to-js)
+(declare
+ sym-to-js
+ vec-to-js
+ list-to-js
+ kw-to-js
+ num-to-js
+ str-to-js
+ map-to-js)
 
 (defn clean-id [id]
   (.replaceAll (str id) "[^a-zA-Z\\$]" "_"))
@@ -20,7 +27,8 @@
 (defn stats-to-js [stats]
   (if (empty? stats)
     []
-    (conj (stats-to-js (rest stats)) (exp-to-js (first stats)))))
+    (conj (stats-to-js (rest stats))
+          (exp-to-js (first stats)))))
 
 (defn str-to-js [e]
   [:string e])
@@ -53,11 +61,11 @@
 
 (defmethod list-to-js :default [lst]
   (cond
-    (keyword? (first lst)) [:methodcall (exp-to-js (second lst)) "get" [(kw-to-js (first lst))]]
-    :else (let [expanded (macroexpand lst)]
-            (if (= lst expanded)
-              [:call [:id (clean-id (first lst))] (map exp-to-js (rest lst))]
-              (list-to-js expanded)))))
+   (keyword? (first lst)) [:methodcall (exp-to-js (second lst)) "get" [(kw-to-js (first lst))]]
+   :else (let [expanded (macroexpand lst)]
+           (if (= lst expanded)
+             [:call [:id (clean-id (first lst))] (map exp-to-js (rest lst))]
+             (list-to-js expanded)))))
 
 (defn try-read [reader]
   (try

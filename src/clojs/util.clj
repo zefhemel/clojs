@@ -3,7 +3,7 @@
   (:use clojs.compiler
         clojs.pp))
 
-(def *all-js-defs* (ref {}))
+(def ^:dynamic *all-js-defs* (ref {}))
 
 (defmacro js-defn  [name params & body]
   (if-not (vector? params)

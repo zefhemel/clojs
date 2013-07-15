@@ -1,7 +1,8 @@
 (ns clojs.rhino-js
   (:gen-class))
 
-(declare *js-context* *js-scope*)
+(declare ^:dynamic *js-context*
+         ^:dynamic *js-scope*)
 
 (defn with-js-scope* [fn]
   (binding [*js-context* (org.mozilla.javascript.Context/enter)]
